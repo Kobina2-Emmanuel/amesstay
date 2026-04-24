@@ -14,7 +14,6 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  // Particle effect
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -48,14 +47,12 @@ export default function LoginPage() {
         p.y += p.vy
         if (p.x < 0 || p.x > canvas.width) p.vx *= -1
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1
-
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(200, 16, 46, ${p.opacity})`
         ctx.fill()
       })
 
-      // Draw connecting lines
       particles.forEach((p1, i) => {
         particles.slice(i + 1).forEach(p2 => {
           const dx = p1.x - p2.x
@@ -111,8 +108,8 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    // Validate UEW email
-    if (!email.endsWith('@st.uew.edu.gh') && !email.endsWith('@uew.edu.gh')) {
+    const isDevEmail = email === 'seshieemmanuel84@gmail.com'
+    if (!isDevEmail && !email.endsWith('@st.uew.edu.gh') && !email.endsWith('@uew.edu.gh')) {
       setError('Please use your UEW institutional email address.')
       setLoading(false)
       return
@@ -126,11 +123,10 @@ export default function LoginPage() {
       return
     }
 
-    const role = detectRole(email)
-    if (role.includes('student') || role.includes('level')) {
+    if (isDevEmail || email.endsWith('@st.uew.edu.gh')) {
       router.push('/student/dashboard')
     } else {
-      router.push('/staff/dashboard')
+      router.push('/lecturer/dashboard')
     }
   }
 
@@ -144,12 +140,8 @@ export default function LoginPage() {
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* Particle canvas */}
-      <canvas ref={canvasRef} style={{
-        position: 'absolute', inset: 0, zIndex: 0,
-      }} />
+      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, zIndex: 0 }} />
 
-      {/* Background glows */}
       <div style={{
         position: 'absolute', top: '20%', left: '10%',
         width: 400, height: 400, borderRadius: '50%',
@@ -163,7 +155,6 @@ export default function LoginPage() {
         zIndex: 0,
       }} />
 
-      {/* Login card */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -180,25 +171,31 @@ export default function LoginPage() {
           boxShadow: '0 0 60px rgba(200,16,46,0.08), 0 32px 64px rgba(0,0,0,0.4)',
         }}
       >
-        {/* Logo area */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
           style={{ textAlign: 'center', marginBottom: 40 }}
         >
-          {/* UEW crest placeholder */}
           <div style={{
-            width: 72, height: 72, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--red) 0%, var(--blue) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 90, height: 90,
             margin: '0 auto 20px',
+            borderRadius: '50%',
+            padding: 4,
+            background: 'linear-gradient(135deg, var(--red) 0%, var(--blue) 100%)',
             boxShadow: '0 0 30px rgba(200,16,46,0.3)',
-            fontSize: 28, fontWeight: 800,
-            fontFamily: 'Syne, sans-serif',
-            color: 'white',
           }}>
-            A
+            <img
+              src="https://amesgh.com/assets/images/logo.png"
+              alt="AMES Logo"
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                background: 'white',
+              }}
+            />
           </div>
 
           <h1 style={{
@@ -218,7 +215,6 @@ export default function LoginPage() {
           </p>
         </motion.div>
 
-        {/* Form */}
         <motion.form
           onSubmit={handleLogin}
           initial={{ opacity: 0 }}
@@ -238,7 +234,7 @@ export default function LoginPage() {
             <input
               className="input-dark"
               type="email"
-              placeholder="5240110009@st.uew.edu.gh"
+              placeholder="524011----@st.uew.edu.gh"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -303,9 +299,33 @@ export default function LoginPage() {
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </motion.button>
+
+          <p style={{
+            textAlign: 'center', fontSize: 13,
+            color: 'var(--muted)', marginTop: 8,
+          }}>
+            <a href="/forgot-password" style={{
+              color: 'var(--red)', textDecoration: 'none',
+              fontFamily: 'DM Sans, sans-serif',
+            }}>
+              Forgot password?
+            </a>
+          </p>
+
+          <p style={{
+            textAlign: 'center', fontSize: 13,
+            color: 'var(--muted)', marginTop: 4,
+            fontFamily: 'DM Sans, sans-serif',
+          }}>
+            No account?{' '}
+            <a href="/signup" style={{
+              color: 'var(--red)', textDecoration: 'none', fontWeight: 600,
+            }}>
+              Sign up
+            </a>
+          </p>
         </motion.form>
 
-        {/* Footer */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
