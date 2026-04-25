@@ -7,16 +7,16 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, CheckSquare, BookOpen,
   FileText, MessageSquare, Bell, LogOut, Menu, X,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Users
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/student/dashboard' },
-  { id: 'attendance', label: 'Attendance', icon: CheckSquare, path: '/student/attendance' },
-  { id: 'resources', label: 'Resources', icon: BookOpen, path: '/student/resources' },
-  { id: 'assignments', label: 'Assignments', icon: FileText, path: '/student/assignments' },
-  { id: 'discussions', label: 'Discussions', icon: MessageSquare, path: '/student/discussions' },
-  { id: 'announcements', label: 'Announcements', icon: Bell, path: '/student/announcements' },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/lecturer/dashboard' },
+  { id: 'attendance', label: 'Take Attendance', icon: CheckSquare, path: '/lecturer/attendance' },
+  { id: 'resources', label: 'Resources', icon: BookOpen, path: '/lecturer/resources' },
+  { id: 'assignments', label: 'Assignments', icon: FileText, path: '/lecturer/assignments' },
+  { id: 'discussions', label: 'Discussions', icon: MessageSquare, path: '/lecturer/discussions' },
+  { id: 'announcements', label: 'Announcements', icon: Bell, path: '/lecturer/announcements' },
 ]
 
 function Tooltip({ label, show }: { label: string; show: boolean }) {
@@ -43,8 +43,8 @@ function Tooltip({ label, show }: { label: string; show: boolean }) {
   )
 }
 
-export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<{ full_name: string; level: string; programme: string } | null>(null)
+export default function LecturerLayout({ children }: { children: React.ReactNode }) {
+  const [profile, setProfile] = useState<{ full_name: string; role: string } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -68,13 +68,11 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     const getProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-     const { data, error } = await supabase
-  .from('profiles')
-  .select('full_name, level, programme')
-  .eq('id', user.id)
-  .maybeSingle()
-
-if (error) console.error('Profile error:', error)
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, role')
+        .eq('id', user.id)
+        .maybeSingle()
       if (data) setProfile(data)
     }
     getProfile()
@@ -86,11 +84,9 @@ if (error) console.error('Profile error:', error)
   }
 
   const sidebarWidth = collapsed ? 72 : 260
-  const progLabel = profile?.programme === 'mated' ? 'Math Ed' : 'Math & Econ'
 
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-
       {/* Logo */}
       <div style={{
         padding: collapsed && !mobile ? '24px 0' : '24px',
@@ -143,7 +139,7 @@ if (error) console.error('Profile error:', error)
         )}
       </div>
 
-      {/* Student info */}
+      {/* Lecturer info */}
       <AnimatePresence>
         {(!collapsed || mobile) && (
           <motion.div
@@ -158,45 +154,35 @@ if (error) console.error('Profile error:', error)
           >
             <div style={{
               width: 48, height: 48, borderRadius: '50%',
-              background: 'linear-gradient(135deg, rgba(200,16,46,0.3), rgba(0,48,135,0.3))',
-              border: '2px solid rgba(200,16,46,0.3)',
+              background: 'linear-gradient(135deg, rgba(0,48,135,0.4), rgba(200,16,46,0.3))',
+              border: '2px solid rgba(0,48,135,0.4)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 18, fontWeight: 700,
               fontFamily: 'Syne, sans-serif',
               color: 'var(--text)', marginBottom: 12,
             }}>
-              {profile?.full_name?.charAt(0) || 'S'}
+              {profile?.full_name?.charAt(0) || 'L'}
             </div>
             <p style={{
               fontFamily: 'Syne, sans-serif', fontWeight: 700,
               fontSize: 14, color: 'var(--text)', marginBottom: 8,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
-              {profile?.full_name || 'Student'}
+              {profile?.full_name || 'Lecturer'}
             </p>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{
-                fontSize: 10, padding: '2px 8px', borderRadius: 999,
-                background: 'rgba(200,16,46,0.15)',
-                border: '1px solid rgba(200,16,46,0.3)',
-                color: 'var(--red)', fontFamily: 'DM Sans, sans-serif',
-              }}>
-                Level {profile?.level || '---'}
-              </span>
-              <span style={{
-                fontSize: 10, padding: '2px 8px', borderRadius: 999,
-                background: 'rgba(0,48,135,0.15)',
-                border: '1px solid rgba(0,48,135,0.3)',
-                color: '#6b9fff', fontFamily: 'DM Sans, sans-serif',
-              }}>
-                {progLabel}
-              </span>
-            </div>
+            <span style={{
+              fontSize: 10, padding: '2px 8px', borderRadius: 999,
+              background: 'rgba(0,48,135,0.15)',
+              border: '1px solid rgba(0,48,135,0.3)',
+              color: '#6b9fff', fontFamily: 'DM Sans, sans-serif',
+            }}>
+              Lecturer
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Nav items */}
+      {/* Nav */}
       <nav style={{
         flex: 1,
         padding: collapsed && !mobile ? '16px 8px' : '16px 12px',
@@ -222,15 +208,14 @@ if (error) console.error('Profile error:', error)
                   padding: collapsed && !mobile ? '12px 0' : '11px 14px',
                   borderRadius: 10, border: 'none', width: '100%',
                   justifyContent: collapsed && !mobile ? 'center' : 'flex-start',
-                  background: active ? 'rgba(200,16,46,0.12)' : 'transparent',
-                  borderLeft: collapsed && !mobile ? 'none' : active ? '3px solid var(--red)' : '3px solid transparent',
-                  boxShadow: active && collapsed && !mobile ? 'inset 0 0 0 1px rgba(200,16,46,0.3)' : 'none',
+                  background: active ? 'rgba(0,48,135,0.15)' : 'transparent',
+                  borderLeft: collapsed && !mobile ? 'none' : active ? '3px solid #003087' : '3px solid transparent',
                   cursor: 'none', transition: 'all 0.2s ease',
                 }}
               >
                 <Icon
                   size={19}
-                  color={active ? '#C8102E' : '#6B7A99'}
+                  color={active ? '#003087' : '#6B7A99'}
                   strokeWidth={active ? 2.5 : 1.8}
                 />
                 <AnimatePresence>
@@ -252,17 +237,15 @@ if (error) console.error('Profile error:', error)
                 </AnimatePresence>
                 {active && (!collapsed || mobile) && (
                   <motion.div
-                    layoutId="activeIndicator"
+                    layoutId="lecturerActiveIndicator"
                     style={{
                       marginLeft: 'auto', width: 6, height: 6,
-                      borderRadius: '50%', background: 'var(--red)',
-                      boxShadow: '0 0 8px var(--red)',
+                      borderRadius: '50%', background: '#003087',
+                      boxShadow: '0 0 8px #003087',
                     }}
                   />
                 )}
               </motion.button>
-
-              {/* Tooltip for collapsed state */}
               {collapsed && !mobile && hoveredItem === item.id && (
                 <Tooltip label={item.label} show={true} />
               )}
@@ -271,10 +254,8 @@ if (error) console.error('Profile error:', error)
         })}
       </nav>
 
-      {/* Bottom — Logout + Collapse toggle */}
+      {/* Bottom */}
       <div style={{ padding: collapsed && !mobile ? '0 8px 16px' : '0 12px 16px' }}>
-
-        {/* Logout */}
         <div
           style={{ position: 'relative' }}
           onMouseEnter={() => setHoveredItem('logout')}
@@ -316,7 +297,6 @@ if (error) console.error('Profile error:', error)
           )}
         </div>
 
-        {/* Collapse toggle — desktop only */}
         {!mobile && (
           <motion.button
             onClick={() => setCollapsed(prev => !prev)}
@@ -336,14 +316,11 @@ if (error) console.error('Profile error:', error)
             {collapsed
               ? <ChevronRight size={16} color="#6B7A99" />
               : <>
-                  <ChevronLeft size={16} color="#6B7A99" />
-                  <span style={{
-                    fontSize: 12, color: 'var(--muted)',
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}>
-                    Collapse
-                  </span>
-                </>
+                <ChevronLeft size={16} color="#6B7A99" />
+                <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Sans, sans-serif' }}>
+                  Collapse
+                </span>
+              </>
             }
           </motion.button>
         )}
@@ -353,8 +330,6 @@ if (error) console.error('Profile error:', error)
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
-
-      {/* Mobile overlay */}
       <AnimatePresence>
         {mobileOpen && isMobile && (
           <motion.div
@@ -371,7 +346,6 @@ if (error) console.error('Profile error:', error)
         )}
       </AnimatePresence>
 
-      {/* Desktop sidebar */}
       {!isMobile && (
         <motion.aside
           animate={{ width: sidebarWidth }}
@@ -389,7 +363,6 @@ if (error) console.error('Profile error:', error)
         </motion.aside>
       )}
 
-      {/* Mobile sidebar */}
       {isMobile && (
         <AnimatePresence>
           {mobileOpen && (
@@ -412,13 +385,11 @@ if (error) console.error('Profile error:', error)
         </AnimatePresence>
       )}
 
-      {/* Main content */}
       <motion.div
         animate={{ marginLeft: isMobile ? 0 : sidebarWidth }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         style={{ flex: 1, minHeight: '100vh' }}
       >
-        {/* Top bar */}
         <div style={{
           height: 64, padding: '0 24px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -450,17 +421,16 @@ if (error) console.error('Profile error:', error)
           </div>
           <div style={{
             width: 36, height: 36, borderRadius: '50%',
-            background: 'linear-gradient(135deg, rgba(200,16,46,0.3), rgba(0,48,135,0.3))',
-            border: '2px solid rgba(200,16,46,0.3)',
+            background: 'linear-gradient(135deg, rgba(0,48,135,0.4), rgba(200,16,46,0.3))',
+            border: '2px solid rgba(0,48,135,0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 14, fontWeight: 700, color: 'var(--text)',
             fontFamily: 'Syne, sans-serif',
           }}>
-            {profile?.full_name?.charAt(0) || 'S'}
+            {profile?.full_name?.charAt(0) || 'L'}
           </div>
         </div>
 
-        {/* Page content */}
         <motion.main
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
