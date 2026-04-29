@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { getSupabaseClient } from '@/lib/supabase/client-instance'
 import {
   LayoutDashboard, CheckSquare, BookOpen,
   FileText, MessageSquare, Bell, LogOut, Menu, X,
-  ChevronLeft, ChevronRight, Users
+  ChevronLeft, ChevronRight
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -19,27 +19,22 @@ const NAV_ITEMS = [
   { id: 'announcements', label: 'Announcements', icon: Bell, path: '/lecturer/announcements' },
 ]
 
-function Tooltip({ label, show }: { label: string; show: boolean }) {
-  if (!show) return null
+function Tooltip({ label }: { label: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      style={{
-        position: 'absolute', left: 80, top: '50%',
-        transform: 'translateY(-50%)',
-        background: 'rgba(15,22,35,0.95)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: 8, padding: '6px 12px',
-        fontSize: 13, color: 'var(--text)',
-        fontFamily: 'DM Sans, sans-serif',
-        whiteSpace: 'nowrap', zIndex: 100,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-        pointerEvents: 'none',
-      }}
-    >
+    <div style={{
+      position: 'absolute', left: 76, top: '50%',
+      transform: 'translateY(-50%)',
+      background: 'rgba(15,22,35,0.98)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 8, padding: '6px 12px',
+      fontSize: 13, color: 'var(--text)',
+      fontFamily: 'DM Sans, sans-serif',
+      whiteSpace: 'nowrap', zIndex: 100,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+      pointerEvents: 'none',
+    }}>
       {label}
-    </motion.div>
+    </div>
   )
 }
 
@@ -51,7 +46,7 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
 
   useEffect(() => {
     const checkMobile = () => {
@@ -87,6 +82,7 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
 
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+
       {/* Logo */}
       <div style={{
         padding: collapsed && !mobile ? '24px 0' : '24px',
@@ -107,32 +103,25 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
               style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'white' }}
             />
           </div>
-          <AnimatePresence>
-            {(!collapsed || mobile) && (
-              <motion.div
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                style={{ overflow: 'hidden' }}
-              >
-                <h2 style={{
-                  fontFamily: 'Syne, sans-serif', fontWeight: 800,
-                  fontSize: 16, color: 'var(--text)', lineHeight: 1.2,
-                  whiteSpace: 'nowrap',
-                }}>
-                  Ames<span style={{ color: 'var(--red)' }}>Stay</span>
-                </h2>
-                <p style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>
-                  UEW · Mathematics
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {(!collapsed || mobile) && (
+            <div>
+              <h2 style={{
+                fontFamily: 'Syne, sans-serif', fontWeight: 800,
+                fontSize: 16, color: 'var(--text)', lineHeight: 1.2,
+                whiteSpace: 'nowrap',
+              }}>
+                Ames<span style={{ color: 'var(--red)' }}>Stay</span>
+              </h2>
+              <p style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>
+                UEW · Mathematics
+              </p>
+            </div>
+          )}
         </div>
         {mobile && (
           <button
             onClick={() => setMobileOpen(false)}
-            style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'none' }}
+            style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}
           >
             <X size={20} />
           </button>
@@ -140,53 +129,45 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
       </div>
 
       {/* Lecturer info */}
-      <AnimatePresence>
-        {(!collapsed || mobile) && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%',
-              background: 'linear-gradient(135deg, rgba(0,48,135,0.4), rgba(200,16,46,0.3))',
-              border: '2px solid rgba(0,48,135,0.4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, fontWeight: 700,
-              fontFamily: 'Syne, sans-serif',
-              color: 'var(--text)', marginBottom: 12,
-            }}>
-              {profile?.full_name?.charAt(0) || 'L'}
-            </div>
-            <p style={{
-              fontFamily: 'Syne, sans-serif', fontWeight: 700,
-              fontSize: 14, color: 'var(--text)', marginBottom: 8,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {profile?.full_name || 'Lecturer'}
-            </p>
-            <span style={{
-              fontSize: 10, padding: '2px 8px', borderRadius: 999,
-              background: 'rgba(0,48,135,0.15)',
-              border: '1px solid rgba(0,48,135,0.3)',
-              color: '#6b9fff', fontFamily: 'DM Sans, sans-serif',
-            }}>
-              Lecturer
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {(!collapsed || mobile) && (
+        <div style={{
+          padding: '20px 24px',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%',
+            background: 'linear-gradient(135deg, rgba(0,48,135,0.4), rgba(200,16,46,0.3))',
+            border: '2px solid rgba(0,48,135,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, fontWeight: 700,
+            fontFamily: 'Syne, sans-serif',
+            color: 'var(--text)', marginBottom: 12,
+          }}>
+            {profile?.full_name?.charAt(0) || 'L'}
+          </div>
+          <p style={{
+            fontFamily: 'Syne, sans-serif', fontWeight: 700,
+            fontSize: 14, color: 'var(--text)', marginBottom: 8,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {profile?.full_name || 'Lecturer'}
+          </p>
+          <span style={{
+            fontSize: 10, padding: '2px 8px', borderRadius: 999,
+            background: 'rgba(0,48,135,0.15)',
+            border: '1px solid rgba(0,48,135,0.3)',
+            color: '#6b9fff', fontFamily: 'DM Sans, sans-serif',
+          }}>
+            Lecturer
+          </span>
+        </div>
+      )}
 
       {/* Nav */}
       <nav style={{
         flex: 1,
         padding: collapsed && !mobile ? '16px 8px' : '16px 12px',
-        display: 'flex', flexDirection: 'column', gap: 4,
+        display: 'flex', flexDirection: 'column', gap: 2,
       }}>
         {NAV_ITEMS.map(item => {
           const active = pathname === item.path
@@ -198,56 +179,45 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
               onMouseEnter={() => setHoveredItem(item.id)}
               onMouseLeave={() => setHoveredItem(null)}
             >
-              <motion.button
+              <div
                 onClick={() => { router.push(item.path); setMobileOpen(false) }}
-                whileHover={{ x: collapsed && !mobile ? 0 : 4 }}
-                whileTap={{ scale: 0.97 }}
                 style={{
                   display: 'flex', alignItems: 'center',
                   gap: collapsed && !mobile ? 0 : 12,
-                  padding: collapsed && !mobile ? '12px 0' : '11px 14px',
-                  borderRadius: 10, border: 'none', width: '100%',
+                  padding: collapsed && !mobile ? '11px 0' : '10px 14px',
+                  borderRadius: 8, width: '100%',
                   justifyContent: collapsed && !mobile ? 'center' : 'flex-start',
-                  background: active ? 'rgba(0,48,135,0.15)' : 'transparent',
+                  background: active ? 'rgba(0,48,135,0.12)' : 'transparent',
                   borderLeft: collapsed && !mobile ? 'none' : active ? '3px solid #003087' : '3px solid transparent',
-                  cursor: 'none', transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease',
                 }}
               >
                 <Icon
-                  size={19}
+                  size={18}
                   color={active ? '#003087' : '#6B7A99'}
                   strokeWidth={active ? 2.5 : 1.8}
                 />
-                <AnimatePresence>
-                  {(!collapsed || mobile) && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
-                      style={{
-                        fontFamily: 'DM Sans, sans-serif',
-                        fontSize: 14, fontWeight: active ? 600 : 400,
-                        color: active ? 'var(--text)' : 'var(--muted)',
-                        whiteSpace: 'nowrap', overflow: 'hidden',
-                      }}
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-                {active && (!collapsed || mobile) && (
-                  <motion.div
-                    layoutId="lecturerActiveIndicator"
-                    style={{
-                      marginLeft: 'auto', width: 6, height: 6,
-                      borderRadius: '50%', background: '#003087',
-                      boxShadow: '0 0 8px #003087',
-                    }}
-                  />
+                {(!collapsed || mobile) && (
+                  <span style={{
+                    fontFamily: 'DM Sans, sans-serif',
+                    fontSize: 14, fontWeight: active ? 600 : 400,
+                    color: active ? 'var(--text)' : 'var(--muted)',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {item.label}
+                  </span>
                 )}
-              </motion.button>
+                {active && (!collapsed || mobile) && (
+                  <div style={{
+                    marginLeft: 'auto', width: 6, height: 6,
+                    borderRadius: '50%', background: '#003087',
+                    boxShadow: '0 0 6px #003087',
+                  }} />
+                )}
+              </div>
               {collapsed && !mobile && hoveredItem === item.id && (
-                <Tooltip label={item.label} show={true} />
+                <Tooltip label={item.label} />
               )}
             </div>
           )
@@ -261,68 +231,53 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
           onMouseEnter={() => setHoveredItem('logout')}
           onMouseLeave={() => setHoveredItem(null)}
         >
-          <motion.button
+          <div
             onClick={handleLogout}
-            whileHover={{ x: collapsed && !mobile ? 0 : 4 }}
-            whileTap={{ scale: 0.97 }}
             style={{
               display: 'flex', alignItems: 'center',
               gap: collapsed && !mobile ? 0 : 12,
-              padding: collapsed && !mobile ? '12px 0' : '11px 14px',
-              borderRadius: 10, border: 'none', width: '100%',
+              padding: collapsed && !mobile ? '11px 0' : '10px 14px',
+              borderRadius: 8, width: '100%',
               justifyContent: collapsed && !mobile ? 'center' : 'flex-start',
-              background: 'transparent', cursor: 'none',
+              cursor: 'pointer',
+              transition: 'background 0.15s ease',
             }}
           >
             <LogOut size={18} color="#6B7A99" strokeWidth={1.8} />
-            <AnimatePresence>
-              {(!collapsed || mobile) && (
-                <motion.span
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  style={{
-                    fontFamily: 'DM Sans, sans-serif',
-                    fontSize: 14, color: 'var(--muted)',
-                    whiteSpace: 'nowrap', overflow: 'hidden',
-                  }}
-                >
-                  Sign Out
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+            {(!collapsed || mobile) && (
+              <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: 'var(--muted)' }}>
+                Sign Out
+              </span>
+            )}
+          </div>
           {collapsed && !mobile && hoveredItem === 'logout' && (
-            <Tooltip label="Sign Out" show={true} />
+            <Tooltip label="Sign Out" />
           )}
         </div>
 
         {!mobile && (
-          <motion.button
+          <div
             onClick={() => setCollapsed(prev => !prev)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
             style={{
               display: 'flex', alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8, width: '100%',
-              padding: '10px 0', borderRadius: 10,
+              justifyContent: 'center', gap: 8,
+              width: '100%', padding: '10px 0', borderRadius: 8,
               border: '1px solid rgba(255,255,255,0.06)',
-              background: 'rgba(255,255,255,0.03)',
-              cursor: 'none', marginTop: 8,
-              transition: 'all 0.2s ease',
+              background: 'rgba(255,255,255,0.02)',
+              cursor: 'pointer', marginTop: 8,
+              transition: 'background 0.15s ease',
             }}
           >
             {collapsed
               ? <ChevronRight size={16} color="#6B7A99" />
               : <>
-                <ChevronLeft size={16} color="#6B7A99" />
-                <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Sans, sans-serif' }}>
-                  Collapse
-                </span>
-              </>
+                  <ChevronLeft size={16} color="#6B7A99" />
+                  <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Sans, sans-serif' }}>
+                    Collapse
+                  </span>
+                </>
             }
-          </motion.button>
+          </div>
         )}
       </div>
     </div>
@@ -330,12 +285,14 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
+
       <AnimatePresence>
         {mobileOpen && isMobile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             onClick={() => setMobileOpen(false)}
             style={{
               position: 'fixed', inset: 0, zIndex: 40,
@@ -347,30 +304,30 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
       </AnimatePresence>
 
       {!isMobile && (
-        <motion.aside
-          animate={{ width: sidebarWidth }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        <div
           style={{
+            width: sidebarWidth,
             minHeight: '100vh',
             background: 'rgba(9,13,24,0.95)',
             backdropFilter: 'blur(20px)',
             borderRight: '1px solid rgba(255,255,255,0.06)',
             position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 50,
             overflow: 'hidden',
+            transition: 'width 0.2s ease',
           }}
         >
           <SidebarContent />
-        </motion.aside>
+        </div>
       )}
 
       {isMobile && (
         <AnimatePresence>
           {mobileOpen && (
-            <motion.aside
+            <motion.div
               initial={{ x: -260 }}
               animate={{ x: 0 }}
               exit={{ x: -260 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
               style={{
                 width: 260, minHeight: '100vh',
                 background: 'rgba(9,13,24,0.98)',
@@ -380,15 +337,17 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
               }}
             >
               <SidebarContent mobile={true} />
-            </motion.aside>
+            </motion.div>
           )}
         </AnimatePresence>
       )}
 
-      <motion.div
-        animate={{ marginLeft: isMobile ? 0 : sidebarWidth }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        style={{ flex: 1, minHeight: '100vh' }}
+      <div
+        style={{
+          marginLeft: isMobile ? 0 : sidebarWidth,
+          flex: 1, minHeight: '100vh',
+          transition: 'margin-left 0.2s ease',
+        }}
       >
         <div style={{
           height: 64, padding: '0 24px',
@@ -402,7 +361,7 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
             {isMobile && (
               <button
                 onClick={() => setMobileOpen(true)}
-                style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'none' }}
+                style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer' }}
               >
                 <Menu size={22} />
               </button>
@@ -431,15 +390,10 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
           </div>
         </div>
 
-        <motion.main
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          style={{ padding: isMobile ? '20px 16px' : '32px' }}
-        >
+        <main style={{ padding: isMobile ? '20px 16px' : '32px' }}>
           {children}
-        </motion.main>
-      </motion.div>
+        </main>
+      </div>
     </div>
   )
 }

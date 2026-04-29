@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { getSupabaseClient } from '@/lib/supabase/client-instance'
 import { TrendingUp, BookOpen, FileText, Download, AlertCircle, Clock } from 'lucide-react'
 
 function StatCard({ label, value, sub, color, icon: Icon, delay }: {
@@ -72,7 +72,7 @@ function StatCard({ label, value, sub, color, icon: Icon, delay }: {
 export default function StudentDashboard() {
   const [profile, setProfile] = useState<{ full_name: string; level: string } | null>(null)
   const [greeting, setGreeting] = useState('')
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
 
   useEffect(() => {
     const hour = new Date().getHours()

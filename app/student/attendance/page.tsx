@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { getSupabaseClient } from '@/lib/supabase/client-instance'
 import {
-  CheckSquare, QrCode, KeyRound, MapPin,
-  CheckCircle, XCircle, Clock, AlertCircle, X
+  CheckSquare, QrCode, KeyRound,
+  CheckCircle, XCircle, AlertCircle, X
 } from 'lucide-react'
 
 type Course = {
@@ -21,7 +21,7 @@ type AttendanceSummary = {
   percent: number
 }
 
-type CheckInStep = 'idle' | 'qr' | 'pin' | 'gps' | 'success' | 'error'
+type CheckInStep = 'idle' | 'qr' | 'pin' | 'success' | 'error'
 
 export default function StudentAttendancePage() {
   const [courses, setCourses] = useState<Course[]>([])
@@ -32,38 +32,34 @@ export default function StudentAttendancePage() {
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [qrData, setQrData] = useState('')
-  const [scanned, setScanned] = useState(false)
-  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
 
-  useEffect(() => {
+ useEffect(() => {
+  const timer = setTimeout(() => {
     fetchCourses()
-  }, [])
-
+  }, 500)
+  return () => clearTimeout(timer)
+}, [])
   const fetchCourses = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
     const { data: enrollments } = await supabase
-  .from('enrollments')
-  .select(`
-    course_id,
-    courses (
-      id,
-      code,
-      name
-    )
-  `)
-  .eq('student_id', user.id)
-
-console.log('enrollments:', enrollments)
+      .from('enrollments')
+      .select(`
+        course_id,
+        courses (
+          id,
+          code,
+          name
+        )
+      `)
+      .eq('student_id', user.id)
 
     if (enrollments) {
       const courseList = enrollments.map((e: any) => e.courses).filter(Boolean)
       setCourses(courseList)
 
-      // Fetch attendance summary per course
       const summaries: AttendanceSummary[] = []
       for (const course of courseList) {
         const { data: sessions } = await supabase
@@ -107,16 +103,13 @@ console.log('enrollments:', enrollments)
     setStep('qr')
     setError('')
     setPin('')
-    setScanned(false)
-    setQrData('')
 
-    // Check if there's an active session for this course
     const { data: session } = await supabase
       .from('sessions')
       .select('*')
       .eq('course_id', course.id)
       .eq('status', 'active')
-      .single()
+      .maybeSingle()
 
     if (!session) {
       setError('No active session found for this course. Wait for your lecturer to start attendance.')
@@ -127,10 +120,8 @@ console.log('enrollments:', enrollments)
     setActiveSession(session)
   }
 
-  const handleQRScanned = (data: string) => {
-    if (data === activeSession?.qr_token) {
-      setScanned(true)
-      setQrData(data)
+  const handleQRScanned = (token: string) => {
+    if (token === activeSession?.qr_token) {
       setTimeout(() => setStep('pin'), 800)
     } else {
       setError('Invalid or expired QR code. Please try again.')
@@ -143,18 +134,15 @@ console.log('enrollments:', enrollments)
       setError('Please enter the 6-digit PIN.')
       return
     }
-
     setLoading(true)
 
-    // Check PIN
     if (pin !== activeSession?.pin) {
-      setError('Wrong or expired PIN. Please check the board and try again.')
+      setError('Wrong PIN. Please check the board and try again.')
       setStep('error')
       setLoading(false)
       return
     }
 
-    // Check PIN expiry
     const pinExpiry = new Date(activeSession?.pin_expires_at)
     if (new Date() > pinExpiry) {
       setError('PIN has expired. Ask your lecturer to regenerate it.')
@@ -163,59 +151,11 @@ console.log('enrollments:', enrollments)
       return
     }
 
-    setStep('gps')
+    await markPresent()
     setLoading(false)
-    checkGPS()
   }
 
-  const checkGPS = () => {
-    if (!navigator.geolocation) {
-      setError('GPS is not available on your device. Ask your lecturer for manual override.')
-      setStep('error')
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords
-        setGpsCoords({ lat: latitude, lng: longitude })
-
-        // Calculate distance from classroom
-        const distance = haversineDistance(
-          latitude, longitude,
-          activeSession.latitude, activeSession.longitude
-        )
-
-        const radius = activeSession.radius_meters || 100
-
-        if (distance > radius + 50) {
-          setError(`You appear to be outside the classroom (${Math.round(distance)}m away). You must be within ${radius}m.`)
-          setStep('error')
-          return
-        }
-
-        // All checks passed — mark present
-        await markPresent(latitude, longitude)
-      },
-      (err) => {
-        setError('Could not get your location. Please enable GPS and try again.')
-        setStep('error')
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    )
-  }
-
-  const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371000
-    const dLat = (lat2 - lat1) * Math.PI / 180
-    const dLon = (lon2 - lon1) * Math.PI / 180
-    const a = Math.sin(dLat / 2) ** 2 +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) ** 2
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  }
-
-  const markPresent = async (lat: number, lng: number) => {
+  const markPresent = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
@@ -226,7 +166,7 @@ console.log('enrollments:', enrollments)
         student_id: user.id,
         status: 'present',
         checked_in_at: new Date().toISOString(),
-        gps_matched: true,
+        gps_matched: false,
       })
 
     if (error) {
@@ -245,7 +185,6 @@ console.log('enrollments:', enrollments)
     setActiveSession(null)
     setPin('')
     setError('')
-    setScanned(false)
   }
 
   const getPercentColor = (percent: number) => {
@@ -273,7 +212,7 @@ console.log('enrollments:', enrollments)
         </p>
       </motion.div>
 
-      {/* Course attendance list */}
+      {/* Course list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {courses.length === 0 ? (
           <motion.div
@@ -282,11 +221,10 @@ console.log('enrollments:', enrollments)
             style={{
               background: 'var(--bg2)',
               border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 16, padding: 40,
-              textAlign: 'center',
+              borderRadius: 16, padding: 40, textAlign: 'center',
             }}
           >
-            <CheckSquare size={40} color="#6B7A99" style={{ margin: '0 auto 16px' }} />
+            <CheckSquare size={40} color="#6B7A99" style={{ margin: '0 auto 16px', display: 'block' }} />
             <p style={{ color: 'var(--muted)', fontFamily: 'DM Sans, sans-serif' }}>
               You are not enrolled in any courses yet.
             </p>
@@ -361,23 +299,22 @@ console.log('enrollments:', enrollments)
                   </p>
                 </div>
 
-                <motion.button
+                <div
                   onClick={() => handleCheckIn(course)}
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.96 }}
                   style={{
                     background: 'linear-gradient(135deg, #C8102E, #a50d24)',
-                    color: 'white', border: 'none', borderRadius: 10,
-                    padding: '12px 24px', cursor: 'none',
+                    color: 'white', borderRadius: 10,
+                    padding: '12px 24px', cursor: 'pointer',
                     fontFamily: 'Syne, sans-serif', fontWeight: 700,
                     fontSize: 13, whiteSpace: 'nowrap',
                     boxShadow: '0 0 20px rgba(200,16,46,0.25)',
                     display: 'flex', alignItems: 'center', gap: 8,
+                    userSelect: 'none',
                   }}
                 >
                   <QrCode size={16} />
                   Check In
-                </motion.button>
+                </div>
               </motion.div>
             )
           })
@@ -412,52 +349,48 @@ console.log('enrollments:', enrollments)
                 boxShadow: '0 0 60px rgba(200,16,46,0.1)',
               }}
             >
-              {/* Close button */}
-              <button
+              {/* Close */}
+              <div
                 onClick={resetFlow}
                 style={{
                   position: 'absolute', top: 16, right: 16,
                   background: 'rgba(255,255,255,0.06)',
-                  border: 'none', borderRadius: 8,
-                  width: 32, height: 32, cursor: 'none',
+                  borderRadius: 8, width: 32, height: 32,
+                  cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'var(--muted)',
                 }}
               >
-                <X size={16} />
-              </button>
+                <X size={16} color="var(--muted)" />
+              </div>
 
               {/* Step indicators */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 32, justifyContent: 'center' }}>
-                {['qr', 'pin', 'gps'].map((s, i) => (
-                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%',
-                      background: step === s
-                        ? 'var(--red)'
-                        : ['success'].includes(step) || (step === 'pin' && s === 'qr') || (step === 'gps' && ['qr', 'pin'].includes(s))
-                        ? 'rgba(16,185,129,0.3)'
-                        : 'rgba(255,255,255,0.06)',
-                      border: step === s ? '2px solid var(--red)' : '2px solid transparent',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: step === s ? '0 0 16px rgba(200,16,46,0.4)' : 'none',
-                      transition: 'all 0.3s ease',
-                    }}>
-                      {s === 'qr' && <QrCode size={14} color="white" />}
-                      {s === 'pin' && <KeyRound size={14} color="white" />}
-                      {s === 'gps' && <MapPin size={14} color="white" />}
-                    </div>
-                    {i < 2 && (
+                {['qr', 'pin'].map((s, i) => {
+                  const isActive = step === s
+                  const isDone = s === 'qr' && ['pin', 'success'].includes(step)
+                  return (
+                    <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{
-                        width: 24, height: 2, borderRadius: 999,
-                        background: (step === 'pin' && s === 'qr') || (step === 'gps' && s !== 'gps') || step === 'success'
-                          ? 'rgba(16,185,129,0.5)'
-                          : 'rgba(255,255,255,0.06)',
+                        width: 32, height: 32, borderRadius: '50%',
+                        background: isDone ? 'rgba(16,185,129,0.3)' : isActive ? 'var(--red)' : 'rgba(255,255,255,0.06)',
+                        border: isActive ? '2px solid var(--red)' : '2px solid transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: isActive ? '0 0 16px rgba(200,16,46,0.4)' : 'none',
                         transition: 'all 0.3s ease',
-                      }} />
-                    )}
-                  </div>
-                ))}
+                      }}>
+                        {s === 'qr' && <QrCode size={14} color="white" />}
+                        {s === 'pin' && <KeyRound size={14} color="white" />}
+                      </div>
+                      {i < 1 && (
+                        <div style={{
+                          width: 24, height: 2, borderRadius: 999,
+                          background: isDone ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.06)',
+                          transition: 'all 0.3s ease',
+                        }} />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
               {/* QR Step */}
@@ -490,7 +423,6 @@ console.log('enrollments:', enrollments)
                     Point your camera at the QR code on the board
                   </p>
 
-                  {/* QR scanner placeholder — real scanner needs html5-qrcode */}
                   <div style={{
                     width: 200, height: 200, margin: '0 auto 24px',
                     border: '2px solid rgba(200,16,46,0.3)',
@@ -498,34 +430,31 @@ console.log('enrollments:', enrollments)
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     position: 'relative', overflow: 'hidden',
                   }}>
-                    {/* Scanning animation */}
                     <motion.div
                       animate={{ y: [-80, 80, -80] }}
                       transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                       style={{
-                        position: 'absolute', left: 0, right: 0,
-                        height: 2, background: 'linear-gradient(90deg, transparent, #C8102E, transparent)',
+                        position: 'absolute', left: 0, right: 0, height: 2,
+                        background: 'linear-gradient(90deg, transparent, #C8102E, transparent)',
                         boxShadow: '0 0 8px rgba(200,16,46,0.8)',
                       }}
                     />
                     <QrCode size={60} color="rgba(200,16,46,0.3)" />
                   </div>
 
-                  {/* Dev bypass button */}
-                  <motion.button
+                  <div
                     onClick={() => handleQRScanned(activeSession?.qr_token)}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     style={{
                       background: 'rgba(200,16,46,0.1)',
                       border: '1px solid rgba(200,16,46,0.3)',
                       color: 'var(--red)', borderRadius: 10,
-                      padding: '10px 20px', cursor: 'none', width: '100%',
+                      padding: '10px 20px', cursor: 'pointer',
                       fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                      textAlign: 'center', userSelect: 'none',
                     }}
                   >
                     Dev: Simulate QR Scan
-                  </motion.button>
+                  </div>
                 </motion.div>
               )}
 
@@ -561,7 +490,6 @@ console.log('enrollments:', enrollments)
 
                   <input
                     type="number"
-                    maxLength={6}
                     value={pin}
                     onChange={e => setPin(e.target.value.slice(0, 6))}
                     placeholder="000000"
@@ -573,63 +501,21 @@ console.log('enrollments:', enrollments)
                     }}
                   />
 
-                  <motion.button
+                  <div
                     onClick={handlePinSubmit}
-                    disabled={loading || pin.length !== 6}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     style={{
                       background: pin.length === 6
                         ? 'linear-gradient(135deg, #C8102E, #a50d24)'
                         : 'rgba(200,16,46,0.3)',
-                      color: 'white', border: 'none', borderRadius: 10,
-                      padding: '14px', cursor: 'none', width: '100%',
+                      color: 'white', borderRadius: 10,
+                      padding: '14px', cursor: 'pointer',
                       fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15,
+                      textAlign: 'center', userSelect: 'none',
                       boxShadow: pin.length === 6 ? '0 0 20px rgba(200,16,46,0.3)' : 'none',
                     }}
                   >
                     {loading ? 'Verifying...' : 'Confirm PIN'}
-                  </motion.button>
-                </motion.div>
-              )}
-
-              {/* GPS Step */}
-              {step === 'gps' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{ textAlign: 'center' }}
-                >
-                  <div style={{
-                    width: 64, height: 64, borderRadius: '50%',
-                    background: 'rgba(200,16,46,0.1)',
-                    border: '2px solid rgba(200,16,46,0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    margin: '0 auto 20px', position: 'relative',
-                  }}>
-                    <MapPin size={28} color="#C8102E" />
-                    <motion.div
-                      animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                      style={{
-                        position: 'absolute', inset: -8,
-                        borderRadius: '50%',
-                        border: '2px solid rgba(200,16,46,0.4)',
-                      }}
-                    />
                   </div>
-                  <h3 style={{
-                    fontFamily: 'Syne, sans-serif', fontWeight: 800,
-                    fontSize: 20, color: 'var(--text)', marginBottom: 8,
-                  }}>
-                    Verifying Location
-                  </h3>
-                  <p style={{
-                    color: 'var(--muted)', fontSize: 13,
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}>
-                    Checking that you are inside the classroom...
-                  </p>
                 </motion.div>
               )}
 
@@ -667,25 +553,23 @@ console.log('enrollments:', enrollments)
                   </p>
                   <p style={{
                     color: 'var(--text)', fontSize: 15,
-                    fontFamily: 'Syne, sans-serif', fontWeight: 700,
-                    marginBottom: 32,
+                    fontFamily: 'Syne, sans-serif', fontWeight: 700, marginBottom: 32,
                   }}>
                     {selectedCourse?.code} — {selectedCourse?.name}
                   </p>
-                  <motion.button
+                  <div
                     onClick={resetFlow}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     style={{
                       background: 'rgba(16,185,129,0.15)',
                       border: '1px solid rgba(16,185,129,0.3)',
                       color: '#10b981', borderRadius: 10,
-                      padding: '12px 24px', cursor: 'none', width: '100%',
+                      padding: '12px 24px', cursor: 'pointer',
                       fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14,
+                      textAlign: 'center', userSelect: 'none',
                     }}
                   >
                     Done
-                  </motion.button>
+                  </div>
                 </motion.div>
               )}
 
@@ -717,39 +601,36 @@ console.log('enrollments:', enrollments)
                   </h3>
                   <p style={{
                     color: 'var(--muted)', fontSize: 13,
-                    fontFamily: 'DM Sans, sans-serif', marginBottom: 32,
-                    lineHeight: 1.6,
+                    fontFamily: 'DM Sans, sans-serif', marginBottom: 32, lineHeight: 1.6,
                   }}>
                     {error}
                   </p>
                   <div style={{ display: 'flex', gap: 12 }}>
-                    <motion.button
+                    <div
                       onClick={resetFlow}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
                       style={{
                         background: 'rgba(255,255,255,0.05)',
                         border: '1px solid rgba(255,255,255,0.1)',
                         color: 'var(--muted)', borderRadius: 10,
-                        padding: '12px', cursor: 'none', flex: 1,
+                        padding: '12px', cursor: 'pointer', flex: 1,
                         fontFamily: 'DM Sans, sans-serif', fontSize: 14,
+                        textAlign: 'center', userSelect: 'none',
                       }}
                     >
                       Cancel
-                    </motion.button>
-                    <motion.button
+                    </div>
+                    <div
                       onClick={() => selectedCourse && handleCheckIn(selectedCourse)}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
                       style={{
                         background: 'linear-gradient(135deg, #C8102E, #a50d24)',
-                        border: 'none', color: 'white', borderRadius: 10,
-                        padding: '12px', cursor: 'none', flex: 1,
+                        color: 'white', borderRadius: 10,
+                        padding: '12px', cursor: 'pointer', flex: 1,
                         fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 14,
+                        textAlign: 'center', userSelect: 'none',
                       }}
                     >
                       Try Again
-                    </motion.button>
+                    </div>
                   </div>
                 </motion.div>
               )}
