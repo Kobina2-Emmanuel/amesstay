@@ -75,7 +75,8 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
-   const isDevEmail = email === 'seshieemmanuel84@gmail.com'
+   const devEmails =['seshieemmanuel84@gmail.com', 'eseshie57@gmail.com']
+   const isDevEmail= devEmails.includes(email)
 if (!isDevEmail && !email.endsWith('@st.uew.edu.gh') && !email.endsWith('@uew.edu.gh')) {
   setError('Please use your UEW institutional email address.')
   setLoading(false)
