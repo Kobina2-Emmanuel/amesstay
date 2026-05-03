@@ -104,32 +104,33 @@ export default function LoginPage() {
   }
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+  e.preventDefault()
+  setLoading(true)
+  setError('')
 
-    const isDevEmail = email === 'seshieemmanuel84@gmail.com'
-    if (!isDevEmail && !email.endsWith('@st.uew.edu.gh') && !email.endsWith('@uew.edu.gh')) {
-      setError('Please use your UEW institutional email address.')
-      setLoading(false)
-      return
-    }
+  const isDevEmail = process.env.NODE_ENV === 'development' &&
+    email === 'seshieemmanuel84@gmail.com'
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) {
-      setError('Invalid email or password. Please try again.')
-      setLoading(false)
-      return
-    }
-
-    if (isDevEmail || email.endsWith('@st.uew.edu.gh')) {
-      router.push('/student/dashboard')
-    } else {
-      router.push('/lecturer/dashboard')
-    }
+  if (!isDevEmail && !email.endsWith('@st.uew.edu.gh') && !email.endsWith('@uew.edu.gh')) {
+    setError('Please use your UEW institutional email address.')
+    setLoading(false)
+    return
   }
 
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+  if (error) {
+    setError('Invalid email or password. Please try again.')
+    setLoading(false)
+    return
+  }
+
+  if (isDevEmail || email.endsWith('@st.uew.edu.gh')) {
+    router.push('/student/dashboard')
+  } else {
+    router.push('/lecturer/dashboard')
+  }
+}
   return (
     <div style={{
       minHeight: '100vh',

@@ -174,7 +174,7 @@ export default function LecturerResourcesPage() {
                 {formatDate(r.created_at)}
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
-                
+                <a
                   href={r.file_url} target="_blank" rel="noopener noreferrer"
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,

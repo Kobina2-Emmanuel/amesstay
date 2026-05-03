@@ -28,7 +28,7 @@ export default function LecturerAttendancePage() {
   const [checkins, setCheckins] = useState<CheckIn[]>([])
   const [loading, setLoading] = useState(false)
   const [pinTimeLeft, setPinTimeLeft] = useState(120)
-  const [qrTimeLeft, setQrTimeLeft] = useState(60)
+  const [qrTimeLeft, setQrTimeLeft] = useState(15)
   const [useLocation, setUseLocation] = useState(false)
   const [statusMsg, setStatusMsg] = useState('')
   const pinTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -70,7 +70,7 @@ export default function LecturerAttendancePage() {
       setQrTimeLeft(prev => {
         if (prev <= 1) {
           handleRegenerateQR()
-          return 60
+          return 15
         }
         return prev - 1
       })
