@@ -4,17 +4,17 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { LayoutDashboard, Users, BookOpen, CheckSquare, BarChart2, Bell, LogOut, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Users, BookOpen, CheckSquare, BarChart2, Bell, LogOut, Menu, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
+  { id: 'timetable', label: 'Timetable', icon: Calendar, path: '/admin/timetable' },  // ADDED
   { id: 'users', label: 'Users', icon: Users, path: '/admin/users' },
   { id: 'courses', label: 'Courses', icon: BookOpen, path: '/admin/courses' },
   { id: 'attendance', label: 'Attendance', icon: CheckSquare, path: '/admin/attendance' },
   { id: 'reports', label: 'Reports', icon: BarChart2, path: '/admin/reports' },
   { id: 'announcements', label: 'Announcements', icon: Bell, path: '/admin/announcements' },
 ]
-
 function Tooltip({ label }: { label: string }) {
   return (
     <div style={{

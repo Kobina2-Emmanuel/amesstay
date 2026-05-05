@@ -4,14 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSupabaseClient } from '@/lib/supabase/client-instance'
-import {
-  LayoutDashboard, CheckSquare, BookOpen,
-  FileText, MessageSquare, Bell, LogOut, Menu, X,
-  ChevronLeft, ChevronRight
-} from 'lucide-react'
+import { LayoutDashboard, CheckSquare, BookOpen, FileText, MessageSquare, Bell, LogOut, Menu, X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/lecturer/dashboard' },
+  { id: 'timetable', label: 'My Schedule', icon: Calendar, path: '/lecturer/timetable' },  
   { id: 'attendance', label: 'Take Attendance', icon: CheckSquare, path: '/lecturer/attendance' },
   { id: 'resources', label: 'Resources', icon: BookOpen, path: '/lecturer/resources' },
   { id: 'assignments', label: 'Assignments', icon: FileText, path: '/lecturer/assignments' },
